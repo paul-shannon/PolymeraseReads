@@ -1,16 +1,16 @@
-#' @title Pol2Ser2Reads
+#' @title PolymeraseReads
 #' @description calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
-#' @name Pol2Ser2Reads
+#' @name PolymeraseReads
 #' @import BiocGenerics
 #' @import org.Hs.eg.db
 #' @import annotatr
 #'
 #' @examples
-#'   psr <- Pol2Ser2Reads$new(geneSymbols="GATA2")
+#'   psr <- PolymeraseReads$new(geneSymbols="GATA2")
 #'
 #' @export
 
-Pol2Ser2Reads = R6Class("Pol2Ser2Reads",
+PolymeraseReads = R6Class("PolymeraseReads",
 
     #--------------------------------------------------------------------------------
     private = list(geneSymbol=NULL,
@@ -22,7 +22,7 @@ Pol2Ser2Reads = R6Class("Pol2Ser2Reads",
          #' @description
          #' Creates a new instance of this [R6][R6::R6Class] class.
          #' @param geneSymbol character, an indentifier for this object
-         #' @return a new instance of Pol2Ser2Reads
+         #' @return a new instance of PolymeraseReads
         initialize = function(geneSymbol){
             private$geneSymbol <- geneSymbol
             private$geneID <- mget("GATA2", org.Hs.egSYMBOL2EG, ifnotfound=NA)[[1]]
@@ -45,7 +45,7 @@ Pol2Ser2Reads = R6Class("Pol2Ser2Reads",
         #' @description the firstexons and their range
         #' @return the geneID
         getFirstExons = function(){
-           gr.firstExons <- get(load(system.file(package="Pol2Ser2Reads",
+           gr.firstExons <- get(load(system.file(package="PolymeraseReads",
                                                  "extdata", "gr.firstExons.RData")))
 
            gr.sub <- subset(gr.firstExons, symbol==private$geneSymbol)

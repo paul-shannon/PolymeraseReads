@@ -1,5 +1,5 @@
 library(RUnit)
-library(Pol2Ser2Reads)
+library(PolymeraseReads)
 #----------------------------------------------------------------------------------------------------
 runTests <- function()
 {
@@ -12,8 +12,8 @@ test_ctor <- function()
     message(sprintf("--- test_ctor"))
 
     geneSymbol <- "GATA2"
-    psr <- Pol2Ser2Reads$new(geneSymbol)
-    checkTrue(all(c("R6", "Pol2Ser2Reads") %in% class(psr)))
+    psr <- PolymeraseReads$new(geneSymbol)
+    checkTrue(all(c("R6", "PolymeraseReads") %in% class(psr)))
     checkEquals(psr$getGeneSymbol(), geneSymbol)
     checkEquals(psr$getGeneID(), "2624")
 
@@ -23,7 +23,7 @@ test_firstExons <- function()
 {
     message(sprintf("--- test_firstExons"))
     geneSymbol <- "GATA2"
-    psr <- Pol2Ser2Reads$new(geneSymbol)
+    psr <- PolymeraseReads$new(geneSymbol)
 
     x <- psr$getFirstExons()
     checkTrue(all(c("range", "exons", "firstExonsEnd") %in% names(x)))
