@@ -1,1 +1,1 @@
-# pol2-ser2-reads
+# R6-template
