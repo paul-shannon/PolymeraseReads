@@ -3,9 +3,9 @@ library(PolymeraseReads)
 library(GenomicRanges)
 library(rtracklayer)
 #----------------------------------------------------------------------------------------------------
-goi <- "MIR181A1"
+goi <- "TAL1"
 if(!exists("igv")){
-    igv <- start.igv(goi, "hg19")
+    igv <- start.igv(goi, "hg38")
     zoomOut(igv)
     }
 #----------------------------------------------------------------------------------------------------
@@ -30,8 +30,7 @@ pol.2 <- function()
 {
    roi <- getGenomicRegion(igv)
    gr.roi <- with(roi, GRanges(seqnames=chrom, IRanges(start, end)))
-
-   # gr.roi <- GRanges(seqnames="chr19", IRanges(1, 58617616))
+   gr.roi <- GRanges(seqnames="chr1", IRanges(1, 249250621))
    gr.bw <- import(f.pol2, which=gr.roi, format="bigwig")
    # most of the reads have very low scores, presumed to be noise
    fivenum(gr.bw$score)
@@ -64,7 +63,9 @@ display.gene.pol2 <- function(gene)
 rna.seq <- function()
 {
    roi <- getGenomicRegion(igv)
-   gr.roi <- GRanges(seqnames="chr19", IRanges(1, 58617616))
+   gr.roi <- with(roi, GRanges(seqnames=chrom, IRanges(start, end)))
+   gr.roi <- GRanges(seqnames="chr1", IRanges(1, 249250621))
+   #gr.roi <- GRanges(seqnames="chr19", IRanges(1, 58617616))
    gr.bw <- import(f.rna, which=gr.roi, format="bigwig")
          # most of the reads have very low scores, presumed to be noise
    #hist(gr.bw$score)
@@ -76,6 +77,25 @@ rna.seq <- function()
 
 } # rna.seq
 #----------------------------------------------------------------------------------------------------
+lift.to.hg38 <- function(gr)
+{
+   #browser()
+   # seqinfo(gr) <- SeqinfoForUCSCGenome("hg19")
+   chain.file <- "hg19ToHg38.over.chain.gz"
+   if(!file.exists(chain.file)){
+      system("curl -O http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz")
+      system(sprintf("gunzip %s", chain.file))
+      }
+
+   chain <- import.chain("hg19ToHg38.over.chain")
+   x <- liftOver(gr, chain)
+   gr.hg38 <- unlist(x)
+   seqinfo(gr.hg38) <- SeqinfoForUCSCGenome("hg38")[seqlevels(gr.hg38)]
+
+   gr.hg38
+
+} # lift.to.hg38
+#----------------------------------------------------------------------------------------------------
 # aligned to hg19
 chro.seq <- function()
 {
@@ -86,21 +106,26 @@ chro.seq <- function()
    f.minus <- "GSM3309956_5587_5598_24205_HGC2FBGXX_J_CHR_TGACCA_R1_minus.bw"
    f.plus  <- "GSM3309956_5587_5598_24205_HGC2FBGXX_J_CHR_TGACCA_R1_plus.bw"
 
-   gr.minus.bw <- import(file.path(data.dir, f.minus), which=gr.roi, format="bigwig")
+   gr.minus.hg19 <- import(file.path(data.dir, f.minus), which=gr.roi, format="bigwig")
    #gr.minus.bw$score <- -1 * gr.minus.bw$score
-   gr.plus.bw <- import(file.path(data.dir, f.plus), which=gr.roi, format="bigwig")
+   gr.plus.hg19 <- import(file.path(data.dir, f.plus), which=gr.roi, format="bigwig")
+
+   gr.plus <- lift.to.hg38(gr.plus.hg19)
+   gr.minus <- lift.to.hg38(gr.minus.hg19)
+
+
 
    #export(gr.minus.bw, con="farsa-minus.bw", format="bigwig")
    #export(gr.plus.bw, con="farsa-plus.bw", format="bigwig")
 
    title <- "ChRO +"
    limit <- 500
-   track <- GRangesQuantitativeTrack(title, gr.plus.bw, autoscale=FALSE, min=0, max=limit,
+   track <- GRangesQuantitativeTrack(title, gr.plus, autoscale=FALSE, min=0, max=limit,
                                      color="red")
    displayTrack(igv, track)
 
    title <- "ChRO -"
-   track <- GRangesQuantitativeTrack(title, gr.minus.bw, autoscale=FALSE, min=(-1*limit), max=0,
+   track <- GRangesQuantitativeTrack(title, gr.minus, autoscale=FALSE, min=(-1*limit), max=0,
                                      color="blue")
    displayTrack(igv, track)
 

@@ -16,7 +16,9 @@ calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 \item \href{#method-PolymeraseReads-new}{\code{PolymeraseReads$new()}}
 \item \href{#method-PolymeraseReads-getGeneSymbol}{\code{PolymeraseReads$getGeneSymbol()}}
 \item \href{#method-PolymeraseReads-getGeneID}{\code{PolymeraseReads$getGeneID()}}
-\item \href{#method-PolymeraseReads-getFirstExons}{\code{PolymeraseReads$getFirstExons()}}
+\item \href{#method-PolymeraseReads-getTranscriptCoordinates}{\code{PolymeraseReads$getTranscriptCoordinates()}}
+\item \href{#method-PolymeraseReads-getReads}{\code{PolymeraseReads$getReads()}}
+\item \href{#method-PolymeraseReads-rpkm}{\code{PolymeraseReads$rpkm()}}
 \item \href{#method-PolymeraseReads-clone}{\code{PolymeraseReads$clone()}}
 }
 }
@@ -26,13 +28,17 @@ calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 \subsection{Method \code{new()}}{
 Creates a new instance of this [R6][R6::R6Class] class.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$new(geneSymbol)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$new(geneSymbol, pol2.bigwigFile, rna.bigwigFile = NA)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{geneSymbol}}{character, an indentifier for this object}
+
+\item{\code{pol2.bigwigFile}}{character, full path to the aligned reads file}
+
+\item{\code{rna.bigwigFile}}{character, full path to the aligned reads file}
 }
 \if{html}{\out{</div>}}
 }
@@ -67,16 +73,53 @@ the geneID
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-PolymeraseReads-getFirstExons"></a>}}
-\if{latex}{\out{\hypertarget{method-PolymeraseReads-getFirstExons}{}}}
-\subsection{Method \code{getFirstExons()}}{
-the firstexons and their range
+\if{html}{\out{<a id="method-PolymeraseReads-getTranscriptCoordinates"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-getTranscriptCoordinates}{}}}
+\subsection{Method \code{getTranscriptCoordinates()}}{
+the coordinates of the longest transcript
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getFirstExons()}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getTranscriptCoordinates()}\if{html}{\out{</div>}}
 }
 
 \subsection{Returns}{
-the geneID
+a list
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-getReads"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-getReads}{}}}
+\subsection{Method \code{getReads()}}{
+the GRanges of scored and aligned reads of
+the longest transcript of geneSymbol
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getReads()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+GRanges
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-rpkm"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-rpkm}{}}}
+\subsection{Method \code{rpkm()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$rpkm(geneSymbol, score.threshold = 0, viz = FALSE)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{geneSymbol}}{character HUGO gene symbol name}
+
+\item{\code{score.threshold}}{numeric ignore reads scoring less than this value}
+
+\item{\code{viz}}{logical display tracks on igvR}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+the rpkm score
 }
 }
 \if{html}{\out{<hr>}}

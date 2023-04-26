@@ -2,5 +2,8 @@
 
 export(PolymeraseReads)
 import(BiocGenerics)
+import(GenomicFeatures)
+import(TxDb.Hsapiens.UCSC.hg38.knownGene)
 import(annotatr)
 import(org.Hs.eg.db)
+import(rtracklayer)

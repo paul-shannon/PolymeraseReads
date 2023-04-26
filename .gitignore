@@ -2,6 +2,9 @@
 .Rhistory
 .Rapp.history
 
+inst/extdata/*.bw
+
+
 # Session Data files
 .RData
 

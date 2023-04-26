@@ -5,9 +5,11 @@ Version: 1.0.1
 Date: 2023-04-17
 Author: Paul Shannon
 Maintainer: Paul Shannon<paul.thurmond.shannon@gmail.com>
-Imports:
+Imports: org.Hs.eg.db
 Description: calculate rpkm of pol2-ser2 binding from bigwig data
 Depends: R (>= 4.1.0), R6
 License: MIT
 Encoding: UTF-8
 RoxygenNote: 7.2.3
+Collate:
+    'PolymeraseReads.R'
