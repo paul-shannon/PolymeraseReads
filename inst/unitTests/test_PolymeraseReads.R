@@ -5,6 +5,7 @@ library(rtracklayer)
 #----------------------------------------------------------------------------------------------------
 chr19.de.genes <- c("RPL131", "RPL18", "RPL18A", "EEF2", "PTB1", "BSG", "RPS28")
 goi <- chr19.de.genes[1]
+viz <- FALSE
 if(exists("viz") && viz){
     if(!exists("igv")){
         igv <<- start.igv(goi, "hg38")
@@ -33,6 +34,8 @@ runTests <- function()
     test_ctor()
     test_getTranscriptCoordinates()
     test_getReads()
+    test_rpkm.rna()
+    test_rpkm.pol2()
 
 } # runTests
 #----------------------------------------------------------------------------------------------------
@@ -170,7 +173,7 @@ display.gene.pol2 <- function(gene)
 
 } # display.gene
 #----------------------------------------------------------------------------------------------------
-test.tal1 <- function()
+test_tal1 <- function()
 {
     message(sprintf("--- test_tal1"))
 
@@ -198,29 +201,59 @@ test.tal1 <- function()
        displayTrack(igv, track)
        }
 
-} # test.tal1
+} # test_tal1
 #----------------------------------------------------------------------------------------------------
-test.rpkm <- function()
+test_rpkm.rna <- function()
 {
+    message(sprintf("--- test_rpkm.rna"))
+
     goi <- "TAL1"
     psr <- PolymeraseReads$new(goi, f.pol2, f.rna)
-    #tal1.rpkm <- lapply(seq(from=0, to=1, by=0.1), function(x) rpkm(goi, f.rna, score.threshold=x))
-    tal1.rpkm <-
-    checkEqualsNumeric(tal1.rpkm, 35, tolerance=5)
+    tal1.rpkm <- psr$rpkm(goi, assay="rna", igv=igv)
+    checkEqualsNumeric(tal1.rpkm, 34, tolerance=0.2)
+
 
     goi <- "MUTYH"
-    mutyh.rpkm <- psr$rpkm(goi)
-    checkEqualsNumeric(tal1.rpkm, 6, tolerance=2)
+    mutyh.rpkm <- psr$rpkm(goi, assay="rna")
+    checkEqualsNumeric(mutyh.rpkm, 6.3, tolerance=0.2)
 
     goi <- "YBX1"
-    goi.rpkm <- psr$rpkm(goi)
-    checkEqualsNumeric(goi.rpkm, 340, tolerance=5)
+    goi.rpkm <- psr$rpkm(goi, assay="rna", igv=igv)
+    checkEqualsNumeric(goi.rpkm, 342, tolerance=0.2)
 
     goi <- "RPL22"  # 3 exons, high cores
-    goi.rpkm <- psr$rpkm(goi)
-    checkEqualsNumeric(goi.rpkm, 265, tolerance=5)
+    goi.rpkm <- psr$rpkm(goi, assay="rna")
+    checkEqualsNumeric(goi.rpkm, 264, tolerance=0.2)
 
-} # test.rpkm
+} # test_rpkm.rna
 #----------------------------------------------------------------------------------------------------
+test_rpkm.pol2 <- function()
+{
+    message(sprintf("--- test_rpkm.pol2"))
+
+    goi <- "TAL1"
+    if(FALSE){
+        igv <- start.igv(goi, "hg38")
+        }
+
+    psr <- PolymeraseReads$new(goi, f.pol2, f.rna)
+    tal1.rpkm.0 <- psr$rpkm(goi, assay="pol2", start.site.avoidance=0, igv=igv)
+    checkEqualsNumeric(tal1.rpkm.0, 6.05, tolerance=0.003)
+
+    tal1.rpkm.500 <- psr$rpkm(goi, assay="pol2", start.site.avoidance=2000, igv=igv)
+    checkEqualsNumeric(tal1.rpkm.500, 6.122, tolerance=0.003)
+
+    goi <- "YBX1"
+    showGenomicRegion(igv, goi)
+    goi.rpkm.0 <- psr$rpkm(goi, assay="pol2", start.site.avoidance=0, igv=igv)
+    checkEqualsNumeric(goi.rpkm.0, 1.96, tolerance=0.003)
+
+    goi <- "YBX1"
+    goi.rpkm.500 <- psr$rpkm(goi, assay="pol2", start.site.avoidance=500, igv=igv)
+    checkEqualsNumeric(goi.rpkm.500, 1.49, tolerance=0.003)
+
+}  # test_rpkm.pol2
+#----------------------------------------------------------------------------------------------------
+
 if(!interactive())
     runTests()

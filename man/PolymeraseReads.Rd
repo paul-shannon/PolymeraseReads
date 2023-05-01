@@ -104,7 +104,13 @@ GRanges
 \if{latex}{\out{\hypertarget{method-PolymeraseReads-rpkm}{}}}
 \subsection{Method \code{rpkm()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$rpkm(geneSymbol, score.threshold = 0, viz = FALSE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$rpkm(
+  geneSymbol,
+  score.threshold = 0,
+  assay,
+  start.site.avoidance = 500,
+  igv = NA
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -114,7 +120,12 @@ GRanges
 
 \item{\code{score.threshold}}{numeric ignore reads scoring less than this value}
 
-\item{\code{viz}}{logical display tracks on igvR}
+\item{\code{assay}}{character either "rna" or "pol2"}
+
+\item{\code{start.site.avoidance}}{numeric default 500bp, for pol2 only, permits
+rpkm calculation to avoid distortion by}
+
+\item{\code{igv}}{default NA, a reference to an igvR instance}
 }
 \if{html}{\out{</div>}}
 }
