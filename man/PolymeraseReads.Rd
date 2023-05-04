@@ -14,9 +14,13 @@ calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-PolymeraseReads-new}{\code{PolymeraseReads$new()}}
+\item \href{#method-PolymeraseReads-setGeneSymbol}{\code{PolymeraseReads$setGeneSymbol()}}
 \item \href{#method-PolymeraseReads-getGeneSymbol}{\code{PolymeraseReads$getGeneSymbol()}}
 \item \href{#method-PolymeraseReads-getGeneID}{\code{PolymeraseReads$getGeneID()}}
+\item \href{#method-PolymeraseReads-findLongestTranscript}{\code{PolymeraseReads$findLongestTranscript()}}
 \item \href{#method-PolymeraseReads-getTranscriptCoordinates}{\code{PolymeraseReads$getTranscriptCoordinates()}}
+\item \href{#method-PolymeraseReads-lift.hg19.to.hg38}{\code{PolymeraseReads$lift.hg19.to.hg38()}}
+\item \href{#method-PolymeraseReads-lift.hg38.to.hg19}{\code{PolymeraseReads$lift.hg38.to.hg19()}}
 \item \href{#method-PolymeraseReads-getReads}{\code{PolymeraseReads$getReads()}}
 \item \href{#method-PolymeraseReads-rpkm}{\code{PolymeraseReads$rpkm()}}
 \item \href{#method-PolymeraseReads-clone}{\code{PolymeraseReads$clone()}}
@@ -28,22 +32,36 @@ calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 \subsection{Method \code{new()}}{
 Creates a new instance of this [R6][R6::R6Class] class.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$new(geneSymbol, pol2.bigwigFile, rna.bigwigFile = NA)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$new(fileList)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{geneSymbol}}{character, an indentifier for this object}
-
-\item{\code{pol2.bigwigFile}}{character, full path to the aligned reads file}
-
-\item{\code{rna.bigwigFile}}{character, full path to the aligned reads file}
+\item{\code{fileList}}{named character vector, a list of bigwig files where
+assays (names) can be one or more of rna, pol2, chroPlus, chroMinus}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
 a new instance of PolymeraseReads
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-setGeneSymbol"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-setGeneSymbol}{}}}
+\subsection{Method \code{setGeneSymbol()}}{
+accessor for the object's geneSybmol field
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$setGeneSymbol(geneSymbol)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{geneSymbol}}{character, the HUGO symbol of the gene if interest}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -73,16 +91,78 @@ the geneID
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-findLongestTranscript"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-findLongestTranscript}{}}}
+\subsection{Method \code{findLongestTranscript()}}{
+find the coordinates of the longest transcript
+  in both hg38 and hg19
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$findLongestTranscript(igv = NA)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{igv}}{igvR instance, default NA}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+a GRanges object
+}
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-PolymeraseReads-getTranscriptCoordinates"></a>}}
 \if{latex}{\out{\hypertarget{method-PolymeraseReads-getTranscriptCoordinates}{}}}
 \subsection{Method \code{getTranscriptCoordinates()}}{
-the coordinates of the longest transcript
+return the coordinates of the longest transcript
+  in both hg38 and hg19
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getTranscriptCoordinates()}\if{html}{\out{</div>}}
 }
 
 \subsection{Returns}{
-a list
+a list of 2 GRanges objects
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-lift.hg19.to.hg38"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-lift.hg19.to.hg38}{}}}
+\subsection{Method \code{lift.hg19.to.hg38()}}{
+liftover GRanges from hg19 to hg38
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$lift.hg19.to.hg38(gr)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{gr}}{GRanges, the hg19 data structure}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+GRanges
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-lift.hg38.to.hg19"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-lift.hg38.to.hg19}{}}}
+\subsection{Method \code{lift.hg38.to.hg19()}}{
+liftover GRanges from hg38 to hg18
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$lift.hg38.to.hg19(gr)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{gr}}{GRanges, the hg38 data structure}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+GRanges
 }
 }
 \if{html}{\out{<hr>}}
@@ -92,9 +172,20 @@ a list
 the GRanges of scored and aligned reads of
 the longest transcript of geneSymbol
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getReads()}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getReads(assay, igv = NA, use.igv.roi = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{assay}}{character, the name of a single assay}
+
+\item{\code{igv}}{igvR instance, default NA}
+
+\item{\code{use.igv.roi}}{logical query igv for current region of interest}
+}
+\if{html}{\out{</div>}}
+}
 \subsection{Returns}{
 GRanges
 }

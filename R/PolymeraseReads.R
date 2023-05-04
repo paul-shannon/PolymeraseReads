@@ -18,11 +18,15 @@ PolymeraseReads = R6Class("PolymeraseReads",
     #--------------------------------------------------------------------------------
     private = list(geneSymbol=NULL,
                    geneID=NULL,
-                   pol2.bigwigFile=NULL,
-                   rna.bigwigFile=NULL,
-                   total.rna.reads=NULL,
-                   total.pol2.reads=NULL,
-                   gr.transcript=NULL,
+                   txdb=NULL,
+                   fileList=c(),
+                   #pol2.bigwigFile=NULL,
+                   #na.bigwigFile=NULL,
+                   total.genome.reads=list(),
+                   #total.rna.reads=NULL,
+                   #total.pol2.reads=NULL,
+                   gr.transcript.hg38=NULL,
+                   gr.transcript.hg19=NULL,
                    gr.reads=NULL
                    ),
 
@@ -30,17 +34,23 @@ PolymeraseReads = R6Class("PolymeraseReads",
     public = list(
          #' @description
          #' Creates a new instance of this [R6][R6::R6Class] class.
-         #' @param geneSymbol character, an indentifier for this object
-         #' @param pol2.bigwigFile character, full path to the aligned reads file
-         #' @param rna.bigwigFile character, full path to the aligned reads file
+         #' @param fileList named character vector, a list of bigwig files where
+         #'   assays (names) can be one or more of rna, pol2, chroPlus, chroMinus
          #' @return a new instance of PolymeraseReads
-        initialize = function(geneSymbol, pol2.bigwigFile, rna.bigwigFile=NA){
-            private$pol2.bigwigFile <- pol2.bigwigFile
-            private$rna.bigwigFile <- rna.bigwigFile
+        initialize = function(fileList){
+            assays <- sort(unique(names(fileList)))
+            stopifnot(all(assays %in% c("rna", "pol2", "chroPlus", "chroMinus")))
+            private$fileList <- fileList
+            private$total.genome.reads <- list(rna=NULL, pol2=NULL,
+                                               chroPlus=NULL, chroMinus=NULL)
+            private$txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+            },
+        #------------------------------------------------------------
+        #' @description accessor for the object's geneSybmol field
+        #' @param geneSymbol character, the HUGO symbol of the gene if interest
+        setGeneSymbol = function(geneSymbol){
             private$geneSymbol <- geneSymbol
             private$geneID <- mget(geneSymbol, org.Hs.egSYMBOL2EG, ifnotfound=NA)[[1]]
-            if(is.na(private$geneID))
-                stop("error.  found no entrez geneID for %s", geneSymbol)
             },
         #------------------------------------------------------------
         #' @description accessor for the object's geneSybmol field
@@ -55,29 +65,103 @@ PolymeraseReads = R6Class("PolymeraseReads",
            private$geneID
            },
         #------------------------------------------------------------
-        #' @description the coordinates of the longest transcript
-        #' @return a list
-        getTranscriptCoordinates = function(){
-           txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-           tx.by.gene <- transcriptsBy(txdb, by="gene")[[private$geneID]]
+        #' @description find the coordinates of the longest transcript
+        #'   in both hg38 and hg19
+        #' @param igv igvR instance, default NA
+        #' @return a GRanges object
+        findLongestTranscript = function(igv=NA){
+           if(is.null(private$geneSymbol)) stop()
+           if(is.null(private$geneID)) stop()
+           tx.by.gene <- transcriptsBy(private$txdb, by="gene")[[private$geneID]]
            longest.transcript <- which(width(tx.by.gene) == max(width(tx.by.gene)))
-           private$gr.transcript <- tx.by.gene[longest.transcript]
-           private$gr.transcript
+           tx.hg38 <- tx.by.gene[longest.transcript]
+           private$gr.transcript.hg19 <- self$lift.hg38.to.hg19(tx.hg38)
+           private$gr.transcript.hg38 <- tx.hg38
+           if(!is.na(igv)){
+               track <- GRangesAnnotationTrack("tx" , tx.hg38, color="random")
+               displayTrack(igv, track)
+               } # igv
+           tx.hg38
            },
+
+        #------------------------------------------------------------
+        #' @description return the coordinates of the longest transcript
+        #'   in both hg38 and hg19
+        #' @return a list of 2 GRanges objects
+        getTranscriptCoordinates = function(){
+            list(hg38=private$gr.transcript.hg38,
+                 hg19=private$gr.transcript.hg19)
+            },
+
+        #------------------------------------------------------------
+        #' @description liftover GRanges from hg19 to hg38
+        #' @param gr  GRanges, the hg19 data structure
+        #' @return GRanges
+        lift.hg19.to.hg38 = function(gr){
+           chain.file <- "hg19ToHg38.over.chain"
+           gz.file <- sprintf("%s.gz", chain.file)
+           if(!file.exists(chain.file)){
+              url <- sprintf("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/%s", gz.file)
+              system(sprintf("curl -O %s", url))
+              system(sprintf("gunzip %s", gz.file))
+              }
+           chain <- import.chain(chain.file)
+           x <- liftOver(gr, chain)
+           gr.hg38 <- unlist(x)
+           seqinfo(gr.hg38) <- SeqinfoForUCSCGenome("hg38")[seqlevels(gr.hg38)]
+           gr.hg38
+           },
+
+        #' @description liftover GRanges from hg38 to hg18
+        #' @param gr  GRanges, the hg38 data structure
+        #' @return GRanges
+        lift.hg38.to.hg19 = function(gr){
+           chain.file <- "hg38ToHg19.over.chain"
+           gz.file <- sprintf("%s.gz", chain.file)
+           if(!file.exists(chain.file)){
+              url <- sprintf("http://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/%s", gz.file)
+              system(sprintf("curl -O %s", url))
+              system(sprintf("gunzip %s", gz.file))
+              }
+           chain <- import.chain(chain.file)
+           x <- liftOver(gr, chain)
+           gr.hg19 <- unlist(x)
+           seqinfo(gr.hg19) <- SeqinfoForUCSCGenome("hg19")[seqlevels(gr.hg19)]
+           gr.hg19
+           },
+
+#----------------------------------------------------------------------------------------------------
+
 
         #' @description the GRanges of scored and aligned reads of
         #' the longest transcript of geneSymbol
+        #' @param assay character, the name of a single assay
+        #' @param igv igvR instance, default NA
+        #' @param use.igv.roi logical query igv for current region of interest
         #' @return GRanges
         #------------------------------------------------------------
-        getReads = function(){
-           stopifnot(!is.null(private$gr.transcript))
+        getReads = function(assay, igv=NA, use.igv.roi=FALSE){
+           stopifnot(!is.null(private$gr.transcript.hg38))
+           stopifnot(assay %in% names(private$fileList))
+           roi <- private$gr.transcript.hg38
+           if(!is.na(igv))
+               if(use.igv.roi){
+                 roi.igv <- getGenomicRegion(igv)
+                 roi <- with(roi.igv, GRanges(seqnames=chrom, IRanges(start, end)))
+               }
            suppressWarnings({
-              private$gr.reads <- import(private$pol2.bigwigFile,
-                                         which=private$gr.transcript, format="bigwig")
+              gr.reads <- import(private$fileList[assay],
+                                 which=roi, format="bigwig")
               })
 
-           private$gr.reads
-        },
+           if(!is.na(igv)){
+               track <- GRangesQuantitativeTrack(assay, gr.reads,
+                                                 autoscale=TRUE, color="random")
+               displayTrack(igv, track)
+               } # igv
+           private$gr.reads <- gr.reads
+           gr.reads
+           },
 
         #'
         #' @param geneSymbol character HUGO gene symbol name
@@ -94,45 +178,24 @@ PolymeraseReads = R6Class("PolymeraseReads",
         rpkm = function(geneSymbol, score.threshold=0.0, assay,
                         start.site.avoidance = 500, igv=NA){
 
-            stopifnot(assay %in% c("rna", "pol2"))
+            stopifnot(assay %in% c("rna", "pol2", "chroPlus", "chroMinus"))
+            self$setGeneSymbol(geneSymbol)
+            tx <- self$findLongestTranscript(igv)
+            bigwigFile <- fileList[assay]
 
-            # get the coordinates and width of the longest transcript
-            # we presume the longest will be least likely to overcount
-            # reads per transcript
-
-            id <- mget(geneSymbol, org.Hs.egSYMBOL2EG, ifnotfound=NA)[[1]]
-            stopifnot(!is.na(id))
-            txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-            tx.by.gene <- transcriptsBy(txdb, by="gene")[[id]]
-            if(is.null(tx.by.gene)){
-                message(sprintf("no transcripts for %s", geneSymbol))
-                return(0)
-                }
-            longest.transcript <- which(width(tx.by.gene) == max(width(tx.by.gene)))  # 10
-            tx <- tx.by.gene[longest.transcript]
-
-            if(!is.na(igv)){
-               tbl.track <- data.frame(chrom=as.character(seqnames(tx)),
-                                       start=start(tx),
-                                       end=end(tx))
-               displayTrack(igv, DataFrameAnnotationTrack("tx", tbl.track, color="random"))
-               }
-            bigwigFile <- switch(assay,
-                                 "rna" = private$rna.bigwigFile,
-                                 "pol2" = private$pol2.bigwigFile)
-            if(assay == "rna"){
-               reads.region <- exonsBy(txdb, by="tx")[[tx$tx_id]]
-               if(is.null(private$total.rna.reads)){
+            if(assay == "rna"){  # no start.site.avoidance makes sense here
+               reads.region <- exonsBy(private$txdb, by="tx")[[tx$tx_id]]
+               if(is.null(private$total.geneome.reads[[assay]])){
                   message(sprintf("counting total reads in rna file"))
                   gr.total <- import(bigwigFile, format="bigwig")
-                  private$total.rna.reads <- length(gr.total[gr.total$score >= score.threshold])
+                  private$total.genome.reads[[assay]] <-
+                      length(gr.total[gr.total$score >= score.threshold])
                   }
-               total.reads.in.file <- private$total.rna.reads
                } # rna
 
-            if(assay == "pol2"){
+            if(assay %in% c("pol2", "chroPlus", "chroMinus")){
                   # see chu 2018, chromatin run-on and sequencing, on avoiding
-                  # pol2
+                  # pol2 tss-proximal pileup
                if(as.character(strand(tx)) == "-"){
                   end(tx) <- end(tx) - start.site.avoidance
                } else {
@@ -140,36 +203,37 @@ PolymeraseReads = R6Class("PolymeraseReads",
                    }
 
                reads.region <- tx
-               if(is.null(private$total.pol2.reads)){
-                  message(sprintf("counting total reads in pol2 file"))
+               if(is.null(private$total.genome.reads[[assay]])){
+                  message(sprintf("counting total reads in %s file", assay))
                   gr.total <- import(bigwigFile, format="bigwig")
-                  private$total.pol2.reads <-
-                          length(gr.total[gr.total$score >= score.threshold])
+                  private$total.genome.reads[[assay]] <-
+                          length(gr.total[abs(gr.total$score) >= score.threshold])
                   }
-               total.reads.in.file <- private$total.pol2.reads
                } # pol2
 
             suppressWarnings(
                gr.reads <- import(bigwigFile, which=reads.region, format="bigwig")
                )
 
-            gr.reads.trimmed <- gr.reads[gr.reads$score >= score.threshold]
+            gr.reads.trimmed <- gr.reads[abs(gr.reads$score) >= score.threshold]
+
             if(!is.na(igv)){
-               title <- switch(assay,
-                               "pol2" = sprintf("%s %d", assay, start.site.avoidance),
-                               "rna"  = "rna")
+               title <- assay
+               if(assay != "rna")
+                  title <- sprintf("%s.%d", assay, start.site.avoidance)
                track <- GRangesQuantitativeTrack(title, gr.reads.trimmed,
                                                  autoscale=TRUE, color="random")
                displayTrack(igv, track)
                }
 
             total.reads.in.region <- round(sum(gr.reads.trimmed$score))
+            total.reads.in.file <- private$total.genome.reads[[assay]]
 
             k <- sum(width(reads.region))/1000
             rpk <- total.reads.in.region/k
 
             millions.of.total.reads <- total.reads.in.file/1e6
-            rpk / millions.of.total.reads
+            abs(rpk / millions.of.total.reads)
             } # rpkm
 
        ) # public
