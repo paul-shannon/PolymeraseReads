@@ -20,11 +20,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
                    geneID=NULL,
                    txdb=NULL,
                    fileList=c(),
-                   #pol2.bigwigFile=NULL,
-                   #na.bigwigFile=NULL,
                    total.genome.reads=list(),
-                   #total.rna.reads=NULL,
-                   #total.pol2.reads=NULL,
                    gr.transcript.hg38=NULL,
                    gr.transcript.hg19=NULL,
                    gr.reads=NULL
@@ -73,7 +69,9 @@ PolymeraseReads = R6Class("PolymeraseReads",
            if(is.null(private$geneSymbol)) stop()
            if(is.null(private$geneID)) stop()
            tx.by.gene <- transcriptsBy(private$txdb, by="gene")[[private$geneID]]
-           longest.transcript <- which(width(tx.by.gene) == max(width(tx.by.gene)))
+           if(is.null(tx.by.gene))
+               return(NA)
+           longest.transcript <- which(width(tx.by.gene) == max(width(tx.by.gene)))[1]
            tx.hg38 <- tx.by.gene[longest.transcript]
            private$gr.transcript.hg19 <- self$lift.hg38.to.hg19(tx.hg38)
            private$gr.transcript.hg38 <- tx.hg38
@@ -132,7 +130,6 @@ PolymeraseReads = R6Class("PolymeraseReads",
 
 #----------------------------------------------------------------------------------------------------
 
-
         #' @description the GRanges of scored and aligned reads of
         #' the longest transcript of geneSymbol
         #' @param assay character, the name of a single assay
@@ -185,7 +182,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
 
             if(assay == "rna"){  # no start.site.avoidance makes sense here
                reads.region <- exonsBy(private$txdb, by="tx")[[tx$tx_id]]
-               if(is.null(private$total.geneome.reads[[assay]])){
+               if(is.null(private$total.genome.reads[[assay]])){
                   message(sprintf("counting total reads in rna file"))
                   gr.total <- import(bigwigFile, format="bigwig")
                   private$total.genome.reads[[assay]] <-
