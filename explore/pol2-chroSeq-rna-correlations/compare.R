@@ -73,12 +73,9 @@ test_rpkm.4way <- function()
 
 } # test_rpkm.4way
 #----------------------------------------------------------------------------------------------------
-bigRun <- function()
+bigRun <- function(gois)
 {
-    tbls <<- list()
-    set.seed(31)
-    selected <- sample(seq_len(length(geneSymbols)), size=10)
-    gois <- sort(sample(geneSymbols, size=100))
+    tbls <- list()
     for(goi in gois){
        tbl <- tryCatch({
           rpkm.4way(goi)
@@ -98,9 +95,14 @@ bigRun <- function()
           } # error
          ) # tryCatch
 
-      tbls[[goi]] <<- tbl
+      tbls[[goi]] <- tbl
       if(tbl$rna > 0)
          print(tbl)
+       progress <- grep(goi, gois)[1]
+       if((progress %% 100) == 0){
+          filename <- sprintf("tbls-%d.RData", progress)
+          save(tbls, file=filename)
+          }
       } # for
 
     filename <- sprintf("tbls-all-%s.RData",
@@ -111,3 +113,6 @@ bigRun <- function()
 
 } # bigRun
 #----------------------------------------------------------------------------------------------------
+if(!interactive()){
+    bigRun(geneSymbols)
+    }
