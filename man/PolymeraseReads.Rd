@@ -17,6 +17,7 @@ calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 \item \href{#method-PolymeraseReads-setGeneSymbol}{\code{PolymeraseReads$setGeneSymbol()}}
 \item \href{#method-PolymeraseReads-getGeneSymbol}{\code{PolymeraseReads$getGeneSymbol()}}
 \item \href{#method-PolymeraseReads-getGeneID}{\code{PolymeraseReads$getGeneID()}}
+\item \href{#method-PolymeraseReads-getStrand}{\code{PolymeraseReads$getStrand()}}
 \item \href{#method-PolymeraseReads-findLongestTranscript}{\code{PolymeraseReads$findLongestTranscript()}}
 \item \href{#method-PolymeraseReads-getTranscriptCoordinates}{\code{PolymeraseReads$getTranscriptCoordinates()}}
 \item \href{#method-PolymeraseReads-lift.hg19.to.hg38}{\code{PolymeraseReads$lift.hg19.to.hg38()}}
@@ -32,7 +33,7 @@ calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 \subsection{Method \code{new()}}{
 Creates a new instance of this [R6][R6::R6Class] class.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$new(fileList)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$new(fileList, txdb)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -88,6 +89,19 @@ accessor for the object's entrez geneID
 
 \subsection{Returns}{
 the geneID
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PolymeraseReads-getStrand"></a>}}
+\if{latex}{\out{\hypertarget{method-PolymeraseReads-getStrand}{}}}
+\subsection{Method \code{getStrand()}}{
+accessor for the strand of the longest tx
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PolymeraseReads$getStrand()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+character, + or - (do not expect "*")
 }
 }
 \if{html}{\out{<hr>}}

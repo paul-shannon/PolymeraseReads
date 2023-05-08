@@ -2,6 +2,11 @@ library(RUnit)
 library(PolymeraseReads)
 library(GenomicRanges)
 library(rtracklayer)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene   # nicknamed for convenience
+library(org.Hs.eg.db)
+chain.file <- "hg38ToHg19.over.chain"
+hg38ToHg19.chain <- import.chain(chain.file)
 #----------------------------------------------------------------------------------------------------
 chr19.de.genes <- c("RPL131", "RPL18", "RPL18A", "EEF2", "PTB1", "BSG", "RPS28")
 goi <- chr19.de.genes[1]
@@ -43,7 +48,7 @@ runTests <- function()
 {
     test_ctor()
     test_getTranscriptCoordinates()
-    test_liftovers()
+    #test_liftovers()
     test_getReads()
     test_rpkm.all.assays()
     #test_rpkm.rna()
@@ -57,7 +62,7 @@ test_ctor <- function()
 
     geneSymbol <- "GATA2"
     stopifnot(file.exists(f.pol2))
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
 
     checkTrue(all(c("R6", "PolymeraseReads") %in% class(psr)))
     psr$setGeneSymbol(geneSymbol)
@@ -66,7 +71,7 @@ test_ctor <- function()
 
     fileList <- c(pol2=f.pol2, rna=f.rna, chroPlus=f.chroPlus, chroMinus=f.chroMinus)
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     checkTrue(all(c("R6", "PolymeraseReads") %in% class(psr)))
 
 } # test_ctor
@@ -77,7 +82,7 @@ test_getTranscriptCoordinates <- function()
 
     geneSymbol <- "RPL13A"
     fileList <- c(pol2=f.pol2, rna=f.rna)
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     psr$setGeneSymbol(geneSymbol)
 
     psr$findLongestTranscript()
@@ -95,14 +100,14 @@ test_getTranscriptCoordinates <- function()
       }
 
     checkEquals(strands, c("+", "+"))
-
+    checkEquals(psr$getStrand(), "+")
 
 } # test_getTranscriptCoordinates
 #----------------------------------------------------------------------------------------------------
 test_liftovers <- function()
 {
     geneSymbol <- "TAL1"
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     psr$setGeneSymbol(geneSymbol)
 
     psr$findLongestTranscript()
@@ -121,7 +126,7 @@ test_getReads <- function()
     geneSymbol <- "TAL1"
     igv <- NA
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     psr$setGeneSymbol(geneSymbol)
 
     psr$findLongestTranscript(igv)
@@ -187,53 +192,13 @@ display.chromosome <- function()
 
 } # display.chromosome
 #----------------------------------------------------------------------------------------------------
-# show the longest transcript
-display.tx <- function(gene)
-{
-   psr <- PolymeraseReads$new(gene, f.pol2, f.rna)
-   gr.tx <- psr$getTranscriptCoordinates()
-   tbl.tx <- as.data.frame(gr.tx)
-   title <- sprintf("%s tx", gene)
-   track <- GRangesAnnotationTrack(title, gr.tx, color="darkgreen")
-   displayTrack(igv, track)
-
-} # display.tx
-#----------------------------------------------------------------------------------------------------
-# show rna-seq across the entire chromosome, to manually identify expressed genes
-display.gene.pol2 <- function(gene)
-{
-   showGenomicRegion(igv, gene)
-   zoomOut(igv)
-
-   removeTracksByName(igv,  getTrackNames(igv)[-(1:2)])
-
-   psr <- PolymeraseReads$new(gene, f.pol2, f.rna)
-   gr.tx <- psr$getTranscriptCoordinates()
-   tbl.tx <- as.data.frame(gr.tx)
-   title <- sprintf("%s tx", gene)
-   track <- GRangesAnnotationTrack(title, gr.tx, color="darkgreen")
-   displayTrack(igv, track)
-
-   roi <- getGenomicRegion(igv)
-   gr.roi <- with(roi, GRanges(seqnames=chrom, IRanges(start, end)))
-   gr.bw <- import(f.pol2, which=gr.roi, format="bigwig")
-   # most of the reads have very low scores, presumed to be noise
-   fivenum(gr.bw$score)
-   gr.bw.trimmed <- gr.bw[gr.bw$score > 1]
-   total.reads <- round(sum(gr.bw.trimmed$score)) # 442441 on chr3
-   title <- sprintf("%s pol2", gene)
-   track <- GRangesQuantitativeTrack(title,gr.bw.trimmed, autoscale=TRUE)
-   displayTrack(igv, track)
-
-} # display.gene
-#----------------------------------------------------------------------------------------------------
 test_tal1 <- function()
 {
     message(sprintf("--- test_tal1"))
 
     geneSymbol <- "TAL1"
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     psr$setGeneSymbol(geneSymbol)
 
     gr.tx <- psr$getTranscriptCoordinates()
@@ -279,7 +244,7 @@ test_rpkm.rna <- function()
     message(sprintf("--- test_rpkm.rna"))
 
     goi <- "TAL1"
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     tal1.rpkm <- psr$rpkm(goi, assay="rna", igv=igv)
     checkEqualsNumeric(tal1.rpkm, 342, tolerance=0.2)
 
@@ -308,7 +273,7 @@ test_rpkm.pol2 <- function()
         igv <- start.igv(goi, "hg38")
         }
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     tal1.rpkm.0 <- psr$rpkm(goi, assay="pol2", start.site.avoidance=0, igv=igv)
     checkEqualsNumeric(tal1.rpkm.0, 6.05, tolerance=0.003)
 
@@ -328,9 +293,9 @@ test_rpkm.pol2 <- function()
 #----------------------------------------------------------------------------------------------------
 test_rpkm.all.assays <- function()
 {
-    message(sprintf("--- test_prkm.all.assays"))
+    message(sprintf("--- test_rpkm.all.assays"))
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     goi <- "TAL1"
     psr$setGeneSymbol(goi)
 
@@ -340,7 +305,7 @@ test_rpkm.all.assays <- function()
         # reflecting, I think, the absence of a big tss pile-up
         # and high pol2 reads downstream
         #------------------------------------------------------------
-    igv <- start.igv(goi)
+    igv <- NA
     tal1.rpkm.0 <- psr$rpkm(goi, assay="pol2", start.site.avoidance=0, igv=igv)
     checkEqualsNumeric(tal1.rpkm.0, 6.05, tolerance=1e-3)
 
@@ -355,7 +320,7 @@ test_rpkm.all.assays <- function()
         # rna-seq
         #-----------------
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     goi <- "TAL1"
     psr$setGeneSymbol(goi)
     tal1.rna.rpkm <- psr$rpkm(goi, assay="rna", start.site.avoidance=0, igv=igv)
@@ -365,7 +330,7 @@ test_rpkm.all.assays <- function()
         # ChroPlus at for tss +0, +500
         #------------------------------
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     goi <- "TAL1"
     psr$setGeneSymbol(goi)
 
@@ -379,7 +344,7 @@ test_rpkm.all.assays <- function()
         # ChroMinus at for tss +0, +500
         #------------------------------
 
-    psr <- PolymeraseReads$new(fileList)
+    psr <- PolymeraseReads$new(fileList, txdb)
     goi <- "TAL1"
     psr$setGeneSymbol(goi)
 

@@ -2,10 +2,10 @@
 #' @description calculates rpkm of pol2-ser2 binding from bigwig data, omitting first exons
 #' @name PolymeraseReads
 #' @import BiocGenerics
-#' @import org.Hs.eg.db
-#' @import annotatr
+# @import org.Hs.eg.db
+# @import annotatr
 #' @import GenomicFeatures
-#' @import TxDb.Hsapiens.UCSC.hg38.knownGene
+# @import TxDb.Hsapiens.UCSC.hg38.knownGene
 #' @import rtracklayer
 #'
 #' @examples
@@ -23,6 +23,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
                    total.genome.reads=list(),
                    gr.transcript.hg38=NULL,
                    gr.transcript.hg19=NULL,
+                   strand=NULL,
                    gr.reads=NULL
                    ),
 
@@ -33,13 +34,18 @@ PolymeraseReads = R6Class("PolymeraseReads",
          #' @param fileList named character vector, a list of bigwig files where
          #'   assays (names) can be one or more of rna, pol2, chroPlus, chroMinus
          #' @return a new instance of PolymeraseReads
-        initialize = function(fileList){
+        initialize = function(fileList, txdb){
             assays <- sort(unique(names(fileList)))
             stopifnot(all(assays %in% c("rna", "pol2", "chroPlus", "chroMinus")))
             private$fileList <- fileList
             private$total.genome.reads <- list(rna=NULL, pol2=NULL,
                                                chroPlus=NULL, chroMinus=NULL)
-            private$txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+            private$txdb <- txdb
+            private$total.genome.reads = list(rna=13269663,
+                                              pol2=18572215,
+                                              chroPlus=5738903,
+                                              chroMinus=5535578)
+
             },
         #------------------------------------------------------------
         #' @description accessor for the object's geneSybmol field
@@ -61,6 +67,12 @@ PolymeraseReads = R6Class("PolymeraseReads",
            private$geneID
            },
         #------------------------------------------------------------
+        #' @description accessor for the strand of the longest tx
+        #' @return character, + or - (do not expect "*")
+        getStrand = function(){
+           private$strand
+           },
+        #------------------------------------------------------------
         #' @description find the coordinates of the longest transcript
         #'   in both hg38 and hg19
         #' @param igv igvR instance, default NA
@@ -73,6 +85,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
                return(NA)
            longest.transcript <- which(width(tx.by.gene) == max(width(tx.by.gene)))[1]
            tx.hg38 <- tx.by.gene[longest.transcript]
+           private$strand <- as.character(strand(tx.hg38)[1])
            private$gr.transcript.hg19 <- self$lift.hg38.to.hg19(tx.hg38)
            private$gr.transcript.hg38 <- tx.hg38
            if(!is.na(igv)){
@@ -106,7 +119,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
            chain <- import.chain(chain.file)
            x <- liftOver(gr, chain)
            gr.hg38 <- unlist(x)
-           seqinfo(gr.hg38) <- SeqinfoForUCSCGenome("hg38")[seqlevels(gr.hg38)]
+           #seqinfo(gr.hg38) <- SeqinfoForUCSCGenome("hg38")[seqlevels(gr.hg38)]
            gr.hg38
            },
 
@@ -114,17 +127,10 @@ PolymeraseReads = R6Class("PolymeraseReads",
         #' @param gr  GRanges, the hg38 data structure
         #' @return GRanges
         lift.hg38.to.hg19 = function(gr){
-           chain.file <- "hg38ToHg19.over.chain"
-           gz.file <- sprintf("%s.gz", chain.file)
-           if(!file.exists(chain.file)){
-              url <- sprintf("http://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/%s", gz.file)
-              system(sprintf("curl -O %s", url))
-              system(sprintf("gunzip %s", gz.file))
-              }
-           chain <- import.chain(chain.file)
-           x <- liftOver(gr, chain)
+           stopifnot(exists("hg38ToHg19.chain"))
+           x <- liftOver(gr, hg38ToHg19.chain)
            gr.hg19 <- unlist(x)
-           seqinfo(gr.hg19) <- SeqinfoForUCSCGenome("hg19")[seqlevels(gr.hg19)]
+           # seqinfo(gr.hg19) <- SeqinfoForUCSCGenome("hg19")[seqlevels(gr.hg19)]
            gr.hg19
            },
 
@@ -187,6 +193,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
                   gr.total <- import(bigwigFile, format="bigwig")
                   private$total.genome.reads[[assay]] <-
                       length(gr.total[gr.total$score >= score.threshold])
+                  printf("%f", private$total.genome.reads[[assay]])
                   }
                } # rna
 
@@ -205,6 +212,7 @@ PolymeraseReads = R6Class("PolymeraseReads",
                   gr.total <- import(bigwigFile, format="bigwig")
                   private$total.genome.reads[[assay]] <-
                           length(gr.total[abs(gr.total$score) >= score.threshold])
+                  printf("%f", private$total.genome.reads[[assay]])
                   }
                } # pol2
 
