@@ -1,203 +1,154 @@
-library(biomaRt)
-library(rtracklayer)
 library(PolymeraseReads)
+library(RUnit)
+
 #library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 #library(org.Hs.eg.db)
-library(BiocParallel)
 
+tbl.chr1 <- get(load("~/github/PolymeraseReads/inst/extdata/tbl-rpkm-chr1.RData"))
+dim(tbl.chr1) # 3808 10
+head(tbl.chr1)
+assay.cols <- c("rna", "rna", "pol2.0", "pol2.500", "chroPlus.0", "chroPlus.500",
+                "chroMinus.0", "chroMinus.500")
+for(coi in assay.cols){
+    tbl.chr1[, coi] <- round(tbl.chr1[, coi], digits=2)
+    }
 
-chain.file <- "hg38ToHg19.over.chain"
-gz.file <- sprintf("%s.gz", chain.file)
-if(!file.exists(chain.file)){
-   url <- sprintf("http://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/%s", gz.file)
-   system(sprintf("curl -O %s", url))
-   system(sprintf("gunzip %s", gz.file))
-   }
-hg38ToHg19.chain <- import.chain(chain.file)
+head(tbl.chr1)
+#      gene strand tx.width   rna pol2.0 pol2.500 chroPlus.0 chroPlus.500 chroMinus.0 chroMinus.500
+# 1 A3GALT2      -    14333  0.00   0.89     0.76       3.01         3.11        5.47          5.33
+# 2 AADACL3      +    12651  0.00   0.01     0.01       0.00         0.00        0.01          0.01
+# 3 AADACL4      +    22992  0.00   0.03     0.03       0.06         0.06        0.05          0.05
+# 4   ABCA4      -   128315  0.00   0.13     0.13       0.60         0.60        0.48          0.48
+# 5  ABCB10      -    42126 52.90   0.83     0.70       0.38         0.31        2.62          2.42
+# 6   ABCD3      +   100275 28.83   0.09     0.06       2.52         1.53        0.03          0.01
 
-tbl.chr1 <- get(load("tbl.chr1.RData"))
+tbl.chr1$chroBoth.0 <- with(tbl.chr1, chroPlus.0, chroMinus.0)
+tbl.chr1$chroBoth.500 <- with(tbl.chr1, chroPlus.500, chroMinus.500)
+
 geneSymbols <- sort(unique(tbl.chr1$hgnc_symbol))
 deleters <- which(nchar(geneSymbols) == 0)
-length(deleters)
-geneSymbols <- geneSymbols[-deleters]
-
-# if(!exists("tbl.chr1")){
-#  dataset <- "hsapiens_gene_ensembl"
-#  hg38.mart <- useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset=dataset)
-#    attribs <- c("chromosome_name", "transcription_start_site", "hgnc_symbol", "strand")
-#    tbl.chr1 <- getBM(attributes=attribs,
-#                      filters="chromosome_name",
-#                      value="1",
-#                      mart=hg38.mart)
-#    dim(tbl.chr1)
-#    geneSymbols <- sort(unique(tbl.chr1$hgnc_symbol))
-#    deleters <- which(nchar(geneSymbols) == 0)
-#    length(deleters)
-#    geneSymbols <- geneSymbols[-deleters]
-#    length(geneSymbols)
-#    head(geneSymbols)
-#    }
+length(deleters) # 0
+if(length(deleters) > 0)
+   geneSymbols <- geneSymbols[-deleters]
 #----------------------------------------------------------------------------------------------------
-f.pol2 <- system.file(package="PolymeraseReads", "extdata",
-                      "NS.1828.002.N704---N506.MB_OHRI_Jurkat_POL2_CI_CPM.bw")
-f.rna <- system.file(package="PolymeraseReads", "extdata",
-                     "RNAseq_IRCM-1793_Hs_Jurkat_DoxN_Rep1_CPM.bw")
-
-f.chroPlus <- system.file(package="PolymeraseReads", "extdata",
-                         "chroPlus-hg38.bw")
-                         # "GSM3309956_5587_5598_24205_HGC2FBGXX_J_CHR_TGACCA_R1_plus.bw")
-f.chroMinus <- system.file(package="PolymeraseReads", "extdata",
-                         "chroMinus-hg38.bw")
-                         #  "GSM3309956_5587_5598_24205_HGC2FBGXX_J_CHR_TGACCA_R1_minus.bw")
-
-fileList <- c(pol2=f.pol2, rna=f.rna, chroMinus=f.chroMinus, chroPlus=f.chroPlus)
-#if(!exists("psr"))
-
-#----------------------------------------------------------------------------------------------------
-rpkm.4way <- function(goi, txdb)
+full.chromosome.pol2.chroBoth.correlation <- function()
 {
-  timeStamp <- format(Sys.time(), "%H:%M:%S")
+    cor(tbl.chr1$pol2.0, tbl.chr1$chroBoth.0, method="spearman") # [1] 0.8777124
+    with(tbl.chr1, plot(chroBoth.0, pol2.0))
+    fivenum(tbl.chr1$pol2.0)  #  0.00  0.00  0.02  0.35 26.99
+    fivenum(tbl.chr1$chroBoth.0) # [1]   0.000   0.000   0.020   0.975 927.800
 
-  psr <- PolymeraseReads$new(fileList, txdb)
-  psr$setGeneSymbol(goi)
-  tx <- psr$findLongestTranscript()
-  strand <- psr$getStrand()
+    tbl.tmp <- subset(tbl.chr1, pol2.0 < 15 & chroBoth.0 < 100)
+    with(tbl.tmp, cor(pol2.0, chroBoth.0, method="spearman"))  # 0.88
+    with(tbl.tmp, cor(pol2.0, chroBoth.0, method="pearson"))  # 0.47
+    with(tbl.tmp, plot(chroBoth.0, pol2.0))
 
-  rna.rpkm           <- psr$rpkm(goi, assay="rna", start.site.avoidance=0)
-  pol2.rpkm.0        <- psr$rpkm(goi, assay="pol2", start.site.avoidance=0)
-  pol2.rpkm.500      <- psr$rpkm(goi, assay="pol2", start.site.avoidance=500)
-  chroPlus.rpkm.0    <- psr$rpkm(goi, assay="chroPlus", start.site.avoidance=0)
-  chroPlus.rpkm.500  <- psr$rpkm(goi, assay="chroPlus", start.site.avoidance=500)
-  chroMinus.rpkm.0   <- psr$rpkm(goi, assay="chroMinus", start.site.avoidance=0)
-  chroMinus.rpkm.500 <- psr$rpkm(goi, assay="chroMinus", start.site.avoidance=500)
+    threshold <- 0.0
+    tbl.chr1$pol2.present <- tbl.chr1$pol2.0 > threshold
+    tbl.chr1$chroBoth.present <- tbl.chr1$chroBoth.0 > threshold
+    with(tbl.chr1, cor(chroBoth.present, pol2.present, method="spearman")) # 0.84
+    with(tbl.chr1, cor(chroBoth.present, pol2.present, method="pearson"))  # 0.84
+    table(tbl.chr1$chroBoth.present)   # FALSE  TRUE
+                                       #  1695  2113
+    table(tbl.chr1$pol2.present)       # FALSE  TRUE
+                                        #  1601  2207
 
-  message(sprintf("--- rpkm.4way %s: %s %5.2f", goi, timeStamp, rna.rpkm))
+       #----------------------------------------------
+       # do this with just chr1:196697434-201020762
+       #----------------------------------------------
 
-  data.frame(gene=goi,
-             strand=psr$getStrand(),
-             tx.width=width(tx),
-             rna=rna.rpkm,
-             pol2.0=pol2.rpkm.0,
-             pol2.500=pol2.rpkm.500,
-             chroPlus.0=chroPlus.rpkm.0,
-             chroPlus.500=chroPlus.rpkm.500,
-             chroMinus.0=chroMinus.rpkm.0,
-             chroMinus.500=chroMinus.rpkm.500
-             )
+    #tbl.tmp <- subset(tbl.chr1,
 
-} # rpkm.4way
+} # full.chromosome.pol2.chroBoth.correlation
 #----------------------------------------------------------------------------------------------------
-test_rpkm.4way <- function()
+find.cor <- function(tbl.x, colName.1, colName.2, method="pearson")
 {
-   goi <- geneSymbols[11]
-   tbl <- rpkm.4way(goi)
+    cor(tbl.x[, colName.1], tbl.x[, colName.2], method=method)
 
-} # test_rpkm.4way
+} # find.cor
 #----------------------------------------------------------------------------------------------------
-bigRun <- function(gois)
+test_find.cor <- function()
 {
-    tbls <- list()
-    for(goi in gois){
-       tbl <- tryCatch({
-          rpkm.4way(goi)
-          },
-       error = function(e){
-           message(sprintf(" failed with %s", goi))
-           print(e)
-           data.frame(gene=goi,
-                      strand="",
-                      tx.width=0,
-                      rna=0,
-                      pol2.0=0,
-                      pol2.500=0,
-                      chroPlus.0=0,
-                      chroPlus.500=0,
-                      chroMinus.0=0,
-                      chroMinus.500=0)
-          } # error
-         ) # tryCatch
+   toi <- tbl.chr1
+   dim(toi)  # 3808 12
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    #  0.24
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  #  0.32
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  #  0.32
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) #  0.20
 
-      tbls[[goi]] <- tbl
-      if(tbl$rna > 0)
-         print(tbl)
-       progress <- grep(goi, gois)[1]
-       if((progress %% 100) == 0){
-          filename <- sprintf("tbls-%d.RData", progress)
-          save(tbls, file=filename)
-          }
-      } # for
+   fivenum(subset(tbl.chr1, rna > 0)$rna) #    0.01    0.82    5.08   14.16 1331.86
 
-    filename <- sprintf("tbls-all-%s.RData",
-                        timestamp <- sub(" ", "", tolower(format(Sys.time(), "%Y.%b.%e-%H:%M"))))
-    save(tbls, file=filename)
-    browser()
-    xyz <- 99
+   toi <- subset(tbl.chr1, rna > 0.5)
+   dim(toi)  # 1194 12
 
-} # bigRun
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    # 0.28
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  # 0.43
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  # 0.43
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) # 0.21
+
+       #----------------------------------
+       # rna > 0.5 and tx > 1000
+       #----------------------------------
+   toi <- subset(tbl.chr1, rna > 0.5 & tx.width > 1000)
+   dim(toi)
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    # 0.28
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  # 0.44
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  # 0.44
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) # 0.21
+
+       #----------------------------------
+       # rna > 0.5 and tx < 1000
+       #----------------------------------
+   toi <- subset(tbl.chr1, rna > 0.5 & tx.width <= 1000)
+   dim(toi)
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    # 0.89
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  # 0.24
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  # 0.24
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) # 0.30
+
+       #----------------------------------
+       # rna > 5.0 and tx > 1000
+       #----------------------------------
+   toi <- subset(tbl.chr1, rna > 5.0 & tx.width > 1000)
+   dim(toi)  # 757
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    # 0.25
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  # 0.39
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  # 0.39
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) # 0.33
+
+       #----------------------------------
+       # rna > 5.0 and tx > 10000
+       #----------------------------------
+   toi <- subset(tbl.chr1, rna > 5.0 & tx.width > 10000)
+   dim(toi)
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    # 0.32
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  # 0.34
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  # 0.34
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) # 0.25
+
+
+
+   as1 <- grep("AS1", tbl.chr1$gene)  # 173
+   linc <- grep("LINC", tbl.chr1$gene) # 229
+   hyphens <- grep("-", tbl.chr1$gene) # 495
+
+   drops <- unique(c(as1))
+   #drops <- unique(c(as1, linc, hyphens))
+   length(drops)   # 173
+
+   toi <- tbl.chr1[-drops,]
+   toi <- subset(toi, rna > 0.5 & tx.width > 1000)
+   dim(toi)   # 1099
+   length(as1)
+
+   round(find.cor(toi, "pol2.0",   "chroBoth.0"), digits=2)    # 0.27
+   round(find.cor(toi, "pol2.500", "chroBoth.500"), digits=2)  # 0.40
+   round(find.cor(toi, "pol2.500", "chroPlus.500"), digits=2)  # 0.40
+   round(find.cor(toi, "pol2.500", "chroMinus.500"), digits=2) # 0.22
+
+
+} # test_find.cor
 #----------------------------------------------------------------------------------------------------
-bpCompatibleSingleRun <- function(goi)
-{
-   require(TxDb.Hsapiens.UCSC.hg38.knownGene)
-   require(org.Hs.eg.db)
-   txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-   hsdb <- org.Hs.eg.db
 
-   tbl <- tryCatch({
-      rpkm.4way(goi, txdb)
-      },
-   error = function(e){
-       message(sprintf(" failed with %s", goi))
-       print(e)
-       data.frame(gene=goi,
-                  strand="",
-                  tx.width=0,
-                  rna=0,
-                  pol2.0=0,
-                  pol2.500=0,
-                  chroPlus.0=0,
-                  chroPlus.500=0,
-                  chroMinus.0=0,
-                  chroMinus.500=0)
-      } # error
-     ) # tryCatch
 
-  on.exit({RSQLite::dbDisconnect(dbconn(txdb));
-           RSQLite::dbDisconnect(dbconn(hsdb));
-           unloadNamespace("TxDb.Hsapiens.UCSC.hg38.knownGene");
-           unloadNamespace("org.Hs.eg.db");
-           gc();
-           })
 
-   tbl
-}
-#----------------------------------------------------------------------------------------------------
-bpRun <- function(gois)
-{
-   maxWorkers <- 20
-   param=MulticoreParam(workers=maxWorkers, stop.on.error=FALSE)
-   highlyExpressedGenes <- c("ARF1",
-                             "CAPZB",
-                             "CCT3",
-                             "CD1E",
-                             "CDC20",
-                             "CHI3L2",
-                             "CSDE1",
-                             "EIF3I",
-                             "ENO1",
-                             "FDPS",
-                             "GNB1")
-
-   
-   f <- rpkm.4way
-   f <- bpCompatibleSingleRun
-   tbls <- bplapply(gois, f, BPPARAM=param)
-   timestamp <- sub(" ", "", tolower(format(Sys.time(), "%Y.%b.%0e-%H:%M")))
-   filename <- sprintf("tbls-%s.RData", timestamp)
-   save(tbls, file=filename)
-
-} # bpRun
-#----------------------------------------------------------------------------------------------------
-if(!interactive()){
-    #bigRun(geneSymbols[101:1001])
-    bpRun(geneSymbols) #[1:10]) # [1000:1699])
-    }
